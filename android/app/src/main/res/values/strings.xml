@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">lullaby</string>
+    <string name="title_activity_main">lullaby</string>
+    <string name="package_name">com.lullaby.app</string>
+    <string name="custom_url_scheme">com.lullaby.app</string>
+</resources>

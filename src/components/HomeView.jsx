@@ -4,10 +4,11 @@ import { getHotTracks, parseEid } from '../api/openwhyd';
 import { normalizeTracks } from '../utils';
 import TrackList from './TrackList';
 import MoodGrid from './MoodGrid';
+import FeedbackSection from './FeedbackSection';
 import { Play, DotsThree, Radio, CaretRight, TrendUp, VinylRecord, MusicNotes, Compass } from '@phosphor-icons/react';
 import { getArtistName } from '../utils';
 
-export default function HomeView({ onPlay, currentTrack, playing }) {
+export default function HomeView({ onPlay, currentTrack, playing, onAddToQueue, onLogin }) {
   const [trending, setTrending] = useState(null);
   const [topTracks, setTopTracks] = useState(null);
   const [curated, setCurated] = useState(null);
@@ -86,7 +87,7 @@ export default function HomeView({ onPlay, currentTrack, playing }) {
               clear
             </button>
           </div>
-          <TrackList tracks={moodTracks} onPlay={onPlay} currentTrack={currentTrack} playing={playing} />
+          <TrackList tracks={moodTracks} onPlay={onPlay} currentTrack={currentTrack} playing={playing} onAddToQueue={onAddToQueue} />
         </section>
       )}
 
@@ -142,6 +143,7 @@ export default function HomeView({ onPlay, currentTrack, playing }) {
           onPlay={onPlay}
           currentTrack={currentTrack}
           playing={playing}
+          onAddToQueue={onAddToQueue}
         />
       </section>
 
@@ -200,9 +202,12 @@ export default function HomeView({ onPlay, currentTrack, playing }) {
             onPlay={onPlay}
             currentTrack={currentTrack}
             playing={playing}
+            onAddToQueue={onAddToQueue}
           />
         </section>
       )}
+
+      <FeedbackSection onLogin={onLogin} />
     </div>
   );
 }

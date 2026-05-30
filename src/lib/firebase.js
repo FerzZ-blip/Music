@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
+import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,15 +13,21 @@ const firebaseConfig = {
 
 let app = null
 let auth = null
+let db = null
 
 export function initFirebase() {
   if (!firebaseConfig.apiKey) return
   app = initializeApp(firebaseConfig)
   auth = getAuth(app)
+  db = getFirestore(app)
 }
 
 export function getFirebaseAuth() {
   return auth
+}
+
+export function getFirebaseDb() {
+  return db
 }
 
 export async function signInGoogle() {

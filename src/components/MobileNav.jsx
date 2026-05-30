@@ -1,7 +1,8 @@
-import { House, ClockCounterClockwise, Heart } from '@phosphor-icons/react';
+import { House, ClockCounterClockwise, Heart, MusicNotes } from '@phosphor-icons/react';
 
 const navItems = [
   { icon: House, label: 'home' },
+  { icon: MusicNotes, label: 'playlists' },
   { icon: ClockCounterClockwise, label: 'spins' },
   { icon: Heart, label: 'crate' },
 ];

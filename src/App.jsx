@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { getSong, searchTracks } from './api/verome';
 import { normalizeTrack, hdThumb, getArtistName } from './utils';
 import useYouTubePlayer from './hooks/useYouTubePlayer';
@@ -16,7 +16,18 @@ import LyricsPanel from './components/LyricsPanel';
 import TrackList from './components/TrackList';
 import LoginModal from './components/LoginModal';
 import LoadingScreen from './components/LoadingScreen';
+import BottomSheet from './components/BottomSheet';
+import PlaylistsView from './components/PlaylistsView';
+import AddToPlaylistModal from './components/AddToPlaylistModal';
 import { Sparkle, User, MusicNotes, Heart, ClockCounterClockwise, List } from '@phosphor-icons/react';
+import { isNative } from './lib/capacitor';
+
+function tryHaptic() {
+  if (!isNative()) return;
+  import('@capacitor/haptics').then(({ Haptics }) => {
+    Haptics.impact({ style: 'light' }).catch(() => {});
+  }).catch(() => {});
+}
 
 export default function App() {
   const [activeView, setActiveView] = useState('home');
@@ -45,7 +56,15 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('history') || '[]'); }
     catch { return []; }
   });
+  const [playlists, setPlaylists] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('playlists') || '[]'); }
+    catch { return []; }
+  });
+  const [pullRefresh, setPullRefresh] = useState(false);
+  const pullStart = useRef(0);
+  const pullY = useRef(0);
 
+  const [playlistModalOpen, setPlaylistModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -72,19 +91,65 @@ export default function App() {
   const queueIndexRef = useRef(queueIndex);
   const repeatRef = useRef(repeat);
   const shuffleRef = useRef(shuffle);
+  const playTrackRef = useRef(null);
+  const seekRef = useRef(null);
+  const currentTrackRef = useRef(null);
 
   useEffect(() => { queueRef.current = queue; }, [queue]);
   useEffect(() => { queueIndexRef.current = queueIndex; }, [queueIndex]);
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
   useEffect(() => { shuffleRef.current = shuffle; }, [shuffle]);
+  useEffect(() => { playTrackRef.current = playTrack; });
+  useEffect(() => { seekRef.current = yt.seek; });
+  useEffect(() => { currentTrackRef.current = yt.currentTrack; });
   useEffect(() => { localStorage.setItem('liked', JSON.stringify([...likedTracks])); }, [likedTracks]);
   useEffect(() => { localStorage.setItem('saved', JSON.stringify(savedTracks)); }, [savedTracks]);
   useEffect(() => { localStorage.setItem('history', JSON.stringify(history)); }, [history]);
+  useEffect(() => { localStorage.setItem('playlists', JSON.stringify(playlists)); }, [playlists]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('theme', dark ? 'dark' : 'light');
+    if (isNative()) {
+      import('@capacitor/status-bar').then(({ StatusBar }) => {
+        StatusBar.setStyle({ style: dark ? 'DARK' : 'LIGHT' });
+      }).catch(() => {});
+    }
   }, [dark]);
+
+  const handleTrackEnd = useCallback(() => {
+    const r = repeatRef.current;
+    const q = queueRef.current;
+    const qi = queueIndexRef.current;
+    const ct = currentTrackRef.current;
+
+    if (r === 'one') {
+      if (q[qi]) playTrackRef.current?.(q[qi], qi, false);
+      else seekRef.current?.(0);
+      return;
+    }
+
+    if (q.length === 0) return;
+
+    if (shuffleRef.current) {
+      const remaining = q.filter((_, i) => i !== qi);
+      if (remaining.length > 0) {
+        const pick = remaining[Math.floor(Math.random() * remaining.length)];
+        playTrackRef.current?.(pick, q.indexOf(pick), false);
+      }
+      return;
+    }
+
+    let next = qi + 1;
+    while (next < q.length && q[next]?.videoId === ct?.videoId) {
+      next++;
+    }
+    if (next < q.length) {
+      playTrackRef.current?.(q[next], next, false);
+    } else if (r === 'all') {
+      playTrackRef.current?.(q[0], 0, false);
+    }
+  }, []);
 
   const yt = useYouTubePlayer();
   const { bridgeConnected, discordConnected } = useDiscordPresence(yt.currentTrack, yt.playing);
@@ -94,6 +159,11 @@ export default function App() {
   useEffect(() => {
     if (yt.currentTrack) prefetchLyrics(yt.currentTrack);
   }, [yt.currentTrack]);
+
+  useEffect(() => {
+    if (!yt.trackEndedAt) return;
+    handleTrackEnd();
+  }, [yt.trackEndedAt, handleTrackEnd]);
 
   function playTrack(track, idx, addToQueue) {
     if (!track) return;
@@ -135,41 +205,19 @@ export default function App() {
       .catch(() => {})
       .finally(() => {
         setQueueIndex(idx !== undefined ? idx : -1);
-        yt.play(meta, () => {
-          setPlaying(false);
-          const r = repeatRef.current;
-          const q = queueRef.current;
-          const qi = queueIndexRef.current;
-          if (r === 'one') {
-            playTrack(q[qi] || meta, qi, false);
-          } else if (shuffleRef.current && q.length > 0) {
-            const remaining = q.filter((_, i) => i !== qi);
-            if (remaining.length > 0) {
-              const pick = remaining[Math.floor(Math.random() * remaining.length)];
-              playTrack(pick, q.indexOf(pick), false);
-            }
-          } else if (r === 'all' && q.length > 0) {
-            if (qi < q.length - 1) {
-              playTrack(q[qi + 1], qi + 1, false);
-            } else {
-              playTrack(q[0], 0, false);
-            }
-          } else if (q.length > 0 && qi < q.length - 1) {
-            playTrack(q[qi + 1], qi + 1, false);
-          }
-        });
+        yt.play(meta);
       });
   }
 
-  function setPlaying(v) {
-    // sync helper for onEnd callback since yt.playing might not be reliable in closure
-  }
+  function setPlaying(v) {}
 
   function handlePlay(track) {
+    tryHaptic();
     playTrack(track, -1, false);
   }
 
   function handleTogglePlay() {
+    tryHaptic();
     yt.togglePlay();
   }
 
@@ -183,20 +231,31 @@ export default function App() {
   }
 
   function handlePrev() {
+    tryHaptic();
     if (queue.length > 0 && queueIndex > 0) {
       playTrack(queue[queueIndex - 1], queueIndex - 1, false);
     }
   }
 
   function handleNext() {
+    tryHaptic();
     if (shuffle && queue.length > 0) {
       const remaining = queue.filter((_, i) => i !== queueIndex);
       if (remaining.length > 0) {
         const pick = remaining[Math.floor(Math.random() * remaining.length)];
         playTrack(pick, queue.indexOf(pick), false);
       }
-    } else if (queue.length > 0 && queueIndex < queue.length - 1) {
-      playTrack(queue[queueIndex + 1], queueIndex + 1, false);
+      return;
+    } else if (queue.length > 0) {
+      let next = queueIndex + 1;
+      while (next < queue.length && queue[next]?.videoId === yt.currentTrack?.videoId) {
+        next++;
+      }
+      if (next < queue.length) {
+        playTrack(queue[next], next, false);
+      } else if (repeat === 'all') {
+        playTrack(queue[0], 0, false);
+      }
     }
   }
 
@@ -258,9 +317,8 @@ export default function App() {
     setActiveView(view);
     setSearchResults(null);
     setSearchQuery('');
+    setSidebarOpen(false);
   }
-
-
 
   function handleOpenNowPlaying() {
     if (yt.currentTrack) setShowNowPlaying(true);
@@ -299,6 +357,21 @@ export default function App() {
     const exists = queue.find((t) => t.videoId === track.videoId);
     if (exists) return;
     setQueue((prev) => [...prev, track]);
+    setQueueIndex(queue.length);
+  }
+
+  function handleAddTrackToQueue(track) {
+    const id = track?.videoId || track?.id;
+    if (!id) return;
+    const exists = queue.find((t) => (t.videoId || t.id) === id);
+    if (exists) return;
+    setQueue((prev) => [...prev, { ...track, videoId: id }]);
+    if (!yt.currentTrack) {
+      setQueueIndex(0);
+      playTrack(track, 0, false);
+    } else if (yt.currentTrack.videoId === id) {
+      setQueueIndex(queue.length);
+    }
   }
 
   function handleQueueMove(from, to) {
@@ -314,9 +387,66 @@ export default function App() {
     else if (from > queueIndex && to <= queueIndex) setQueueIndex((i) => i + 1);
   }
 
+  function handleAddToPlaylist(track, playlistId) {
+    if (!track?.videoId) return;
+    setPlaylists((prev) => prev.map((pl) => {
+      if (pl.id !== playlistId) return pl;
+      if (pl.tracks.some((t) => t.videoId === track.videoId)) return pl;
+      return { ...pl, tracks: [...pl.tracks, track] };
+    }));
+  }
 
+  function handleCreatePlaylist(name) {
+    const id = `pl_${Date.now()}`;
+    setPlaylists((prev) => [...prev, { id, name, tracks: [], createdAt: Date.now() }]);
+    return id;
+  }
 
+  function handleDeletePlaylist(id) {
+    setPlaylists((prev) => prev.filter((pl) => pl.id !== id));
+  }
 
+  function handleRenamePlaylist(id, name) {
+    setPlaylists((prev) => prev.map((pl) => pl.id === id ? { ...pl, name } : pl));
+  }
+
+  function handleRemoveTrackFromPlaylist(playlistId, trackId) {
+    setPlaylists((prev) => prev.map((pl) =>
+      pl.id === playlistId ? { ...pl, tracks: pl.tracks.filter((t) => t.videoId !== trackId) } : pl
+    ));
+  }
+
+  function handlePlayPlaylist(playlist, trackIndex = 0) {
+    const tracks = playlist?.tracks;
+    if (!tracks || tracks.length === 0) return;
+    const remaining = tracks.slice(trackIndex);
+    setQueue(remaining);
+    setQueueIndex(0);
+    playTrack(remaining[0], 0, false);
+  }
+
+  const handlePullStart = useCallback((e) => {
+    if (showNowPlaying || activeView !== 'home' || searchQuery) return;
+    if (window.scrollY > 0) return;
+    pullStart.current = e.touches[0].clientY;
+  }, [showNowPlaying, activeView, searchQuery]);
+
+  const handlePullMove = useCallback((e) => {
+    if (pullStart.current === 0) return;
+    const diff = e.touches[0].clientY - pullStart.current;
+    if (diff > 80) {
+      pullY.current = diff;
+      setPullRefresh(true);
+    }
+  }, []);
+
+  const handlePullEnd = useCallback(() => {
+    if (pullRefresh) {
+      setPullRefresh(false);
+      window.location.reload();
+    }
+    pullStart.current = 0;
+  }, [pullRefresh]);
 
   function renderContent() {
     if (showNowPlaying) {
@@ -344,6 +474,7 @@ export default function App() {
           saved={yt.currentTrack ? savedTracks.some((t) => t.videoId === yt.currentTrack.videoId) : false}
           onSave={() => handleSaveTrack(yt.currentTrack)}
           onAddToQueue={handleAddToQueue}
+          onAddToPlaylist={() => setPlaylistModalOpen(true)}
         />
       );
     }
@@ -356,7 +487,7 @@ export default function App() {
               <h2 className="text-sm text-warm-500 dark:text-warm-400">found in the stacks — <span className="text-warm-700 dark:text-warm-200 font-medium">"{searchQuery}"</span></h2>
               <span className="text-xs text-warm-400 dark:text-warm-500 ml-auto">{searchResults.length} tracks</span>
             </div>
-            <TrackList tracks={searchResults} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />
+            <TrackList tracks={searchResults} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} onAddToQueue={handleAddTrackToQueue} />
           </section>
         );
       }
@@ -373,7 +504,7 @@ export default function App() {
                 <h3 className="text-xs font-semibold text-warm-600 dark:text-warm-400 uppercase tracking-wide">songs</h3>
                 <span className="text-[10px] text-warm-400 dark:text-warm-500">{songs.length}</span>
               </div>
-              <TrackList tracks={songs} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />
+              <TrackList tracks={songs} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} onAddToQueue={handleAddTrackToQueue} />
             </section>
           )}
         </div>
@@ -392,7 +523,7 @@ export default function App() {
             )}
           </div>
           {history.length > 0 ? (
-            <TrackList tracks={history} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />
+            <TrackList tracks={history} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} onAddToQueue={handleAddTrackToQueue} />
             ) : (
               <p className="text-sm text-warm-400 text-center py-8">nothing on the turntable</p>
             )}
@@ -409,7 +540,7 @@ export default function App() {
             <span className="text-[11px] text-warm-400 dark:text-warm-500 ml-auto">{savedTracks.length} saved</span>
           </div>
           {savedTracks.length > 0 ? (
-            <TrackList tracks={savedTracks} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />
+            <TrackList tracks={savedTracks} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} onAddToQueue={handleAddTrackToQueue} />
           ) : (
             <div className="text-center py-16">
               <Heart size={36} className="text-warm-300 dark:text-warm-700 mx-auto mb-3" />
@@ -421,11 +552,26 @@ export default function App() {
       );
     }
 
-    return <HomeView onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />;
+    if (activeView === 'playlists') {
+      return (
+        <PlaylistsView
+          playlists={playlists}
+          currentTrack={yt.currentTrack}
+          playing={yt.playing}
+          onPlay={handlePlayPlaylist}
+          onRename={handleRenamePlaylist}
+          onDelete={handleDeletePlaylist}
+          onCreate={handleCreatePlaylist}
+          onRemoveTrack={handleRemoveTrackFromPlaylist}
+        />
+      );
+    }
+
+    return <HomeView onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} onAddToQueue={handleAddTrackToQueue} onLogin={() => setLoginOpen(true)} />;
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col app-container">
       {pageLoading && <LoadingScreen message="tuning the frequencies..." />}
       {!showNowPlaying && (
         <>
@@ -434,9 +580,19 @@ export default function App() {
         </>
       )}
 
-      <main className={`flex-1 px-4 md:px-10 pt-4 md:pt-5 pb-[152px] md:pb-[76px] ${showNowPlaying ? 'ml-0 max-w-none' : 'md:ml-20 max-w-5xl'}`}>
+      <main
+        className={`flex-1 px-4 md:px-10 pt-4 md:pt-5 pb-[152px] md:pb-[76px] ${showNowPlaying ? 'ml-0 max-w-none' : 'md:ml-20 max-w-5xl'}`}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+      >
+        {pullRefresh && (
+          <div className="flex items-center justify-center py-4">
+            <div className="w-5 h-5 border-2 border-rose-300 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         {!showNowPlaying && (
-          <div className="flex items-center justify-between mb-6 md:mb-7">
+          <div className="flex items-center justify-between mb-6 md:mb-7 app-header">
             <div className="flex items-center gap-2 md:gap-3">
               <button onClick={() => setSidebarOpen((s) => !s)} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
                 <List size={18} weight="bold" />
@@ -497,6 +653,7 @@ export default function App() {
         saved={yt.currentTrack ? savedTracks.some((t) => t.videoId === yt.currentTrack.videoId) : false}
         onSave={() => handleSaveTrack(yt.currentTrack)}
         onAddToQueue={handleAddToQueue}
+        onAddToPlaylist={() => setPlaylistModalOpen(true)}
         bridgeConnected={bridgeConnected}
         discordConnected={discordConnected}
       />
@@ -518,6 +675,15 @@ export default function App() {
       <LyricsPanel track={yt.currentTrack} visible={lyricsOpen} onClose={() => setLyricsOpen(false)} progress={yt.progress} />
 
       {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} />}
+
+      <AddToPlaylistModal
+        visible={playlistModalOpen}
+        track={yt.currentTrack}
+        playlists={playlists}
+        onClose={() => setPlaylistModalOpen(false)}
+        onAdd={handleAddToPlaylist}
+        onCreate={handleCreatePlaylist}
+      />
     </div>
   );
 }

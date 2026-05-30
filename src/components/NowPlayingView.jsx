@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  Play, Pause, SkipBack, SkipForward, CaretDown, Shuffle, Repeat, SpeakerHigh, TextAlignLeft, Queue,
+  Play, Pause, SkipBack, SkipForward, CaretDown, Shuffle, Repeat, SpeakerHigh, TextAlignLeft, Queue, Playlist,
   Heart, Heartbeat, MusicNotes,
 } from '@phosphor-icons/react';
 import useLyrics from '../hooks/useLyrics';
@@ -18,6 +18,7 @@ export default function NowPlayingView({
   onTogglePlay, onSeek, onVolume, onPrev, onNext, onClose, onLyrics,
   repeat, onRepeat, shuffle, onShuffle,
   liked, onLike, saved, onSave,
+  onAddToPlaylist,
 }) {
   function cycleRepeat() {
     const modes = ['off', 'one', 'all'];
@@ -60,16 +61,31 @@ export default function NowPlayingView({
           <CaretDown size={16} weight="bold" />
           now playing
         </button>
-        <button onClick={onLyrics} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-100 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50" title="lyrics panel">
-          <TextAlignLeft size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={onAddToPlaylist} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-100 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50" title="add to playlist">
+            <Playlist size={18} />
+          </button>
+          <button onClick={onLyrics} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-100 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50" title="lyrics panel">
+            <TextAlignLeft size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="md:w-[42%] md:min-w-[360px] flex flex-col items-center justify-center px-4 md:px-8 py-4 md:py-6 md:sticky md:top-0 md:self-start">
-        <button onClick={onClose} className="hidden md:flex items-center gap-1 text-xs text-warm-400 hover:text-warm-600 dark:text-warm-500 dark:hover:text-warm-300 transition-colors mb-4 self-start">
-          <CaretDown size={14} weight="bold" />
-          now playing
-        </button>
+        <div className="hidden md:flex items-center justify-between w-full mb-4">
+          <button onClick={onClose} className="flex items-center gap-1 text-xs text-warm-400 hover:text-warm-600 dark:text-warm-500 dark:hover:text-warm-300 transition-colors">
+            <CaretDown size={14} weight="bold" />
+            now playing
+          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={onAddToPlaylist} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-100 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50" title="add to playlist">
+              <Playlist size={16} />
+            </button>
+            <button onClick={onLyrics} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-100 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50" title="lyrics panel">
+              <TextAlignLeft size={16} />
+            </button>
+          </div>
+        </div>
 
         <div className="w-full aspect-square max-w-[260px] md:max-w-[300px] rounded-2xl md:rounded-3xl overflow-hidden bg-warm-200 shadow-lg mb-5 md:mb-6 dark:bg-warm-800">
           {track?.thumbnail ? (

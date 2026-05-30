@@ -1,10 +1,13 @@
-import { Sparkle, House, ClockCounterClockwise, Heart, Moon, Sun, User } from '@phosphor-icons/react';
+import { Sparkle, House, ClockCounterClockwise, Heart, MusicNotes, Moon, Sun, User } from '@phosphor-icons/react';
 import { useAuth } from '../contexts/AuthContext';
+
+const APP_VERSION = '1.0.0';
 
 const navItems = [
   { icon: House, label: 'home' },
   { icon: ClockCounterClockwise, label: 'spins' },
   { icon: Heart, label: 'crate' },
+  { icon: MusicNotes, label: 'playlists' },
 ];
 
 export default function Sidebar({ activeView, onNavigate, dark, onThemeToggle, onLogin, open, onToggle }) {
@@ -53,6 +56,7 @@ export default function Sidebar({ activeView, onNavigate, dark, onThemeToggle, o
           )}
         </button>
       </div>
+      <span className="text-[9px] text-warm-300 dark:text-warm-700 tracking-wider mt-1">v{APP_VERSION}</span>
     </>
   );
 

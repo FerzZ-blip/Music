@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, SpeakerHigh, SpeakerX, TextAlignLeft, Queue, Playlist, CaretUp } from '@phosphor-icons/react';
+import { Play, Pause, SkipBack, SkipForward, SpeakerHigh, SpeakerX, TextAlignLeft, Queue, Playlist, MusicNotes, CaretUp } from '@phosphor-icons/react';
 import { useState, useRef } from 'react';
 import { getArtistName } from '../utils';
 
@@ -15,7 +15,7 @@ export default function Player({
   onPrev, onNext, onExpand, queueLength, queueIndex,
   repeat, onRepeat, shuffle, onShuffle,
   saved, onSave,
-  onAddToQueue,
+  onAddToQueue, onAddToPlaylist,
   bridgeConnected, discordConnected,
 }) {
   const [volumeOpen, setVolumeOpen] = useState(false);
@@ -124,6 +124,13 @@ export default function Player({
             title="add to queue"
           >
             <Queue size={17} weight="regular" />
+          </button>
+          <button
+            onClick={onAddToPlaylist}
+            className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50"
+            title="add to playlist"
+          >
+            <MusicNotes size={17} weight="regular" />
           </button>
         </div>
 

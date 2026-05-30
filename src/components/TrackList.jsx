@@ -1,4 +1,4 @@
-import { Play, Pause, DotsThree } from '@phosphor-icons/react';
+import { Play, Pause, Queue } from '@phosphor-icons/react';
 import { getArtistName } from '../utils';
 
 function formatTime(s) {
@@ -19,7 +19,7 @@ function TimeAgo({ date }) {
   return `${Math.floor(days / 7)}w ago`;
 }
 
-export default function TrackList({ tracks, onPlay, currentTrack, playing, loading }) {
+export default function TrackList({ tracks, onPlay, currentTrack, playing, loading, onAddToQueue }) {
   if (loading) {
     return (
       <div className="space-y-2">
@@ -97,9 +97,15 @@ export default function TrackList({ tracks, onPlay, currentTrack, playing, loadi
                   <TimeAgo date={track.date} />
                 </span>
               )}
-              <button className="opacity-0 group-hover:opacity-100 text-warm-400 hover:text-warm-600 dark:text-warm-500 dark:hover:text-warm-300 transition-all">
-                <DotsThree size={18} weight="bold" />
-              </button>
+              {onAddToQueue && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAddToQueue(track); }}
+                  className="opacity-0 group-hover:opacity-100 text-warm-400 hover:text-rose-500 dark:text-warm-500 dark:hover:text-rose-400 transition-all p-1"
+                  title="add to queue"
+                >
+                  <Queue size={15} />
+                </button>
+              )}
             </div>
           </div>
         );

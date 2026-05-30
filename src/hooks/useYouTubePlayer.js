@@ -30,13 +30,13 @@ export default function useYouTubePlayer() {
     duration: 0,
     currentTrack: null,
     error: null,
+    trackEndedAt: 0,
   });
 
   const playerRef = useRef(null);
   const containerRef = useRef(null);
   const readyRef = useRef(false);
   const progressTimer = useRef(null);
-  const onEndRef = useRef(null);
   const volumeRef = useRef(0.7);
   const pendingRef = useRef(null);
 
@@ -49,7 +49,6 @@ export default function useYouTubePlayer() {
     let ctx
     try {
       ctx = new (window.AudioContext || window.webkitAudioContext)()
-      // silent oscillator keeps audio channel active
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       gain.gain.value = 0
@@ -93,13 +92,11 @@ export default function useYouTubePlayer() {
             readyRef.current = true;
             update({ ready: true });
             if (pendingRef.current) {
-              const { id, onEnd } = pendingRef.current;
+              const { id } = pendingRef.current;
               pendingRef.current = null;
               p.loadVideoById(id);
               p.setVolume(volumeRef.current * 100);
-              onEndRef.current = onEnd || null;
             }
-            // Resume playback if tab was hidden and player got paused
             document.addEventListener('visibilitychange', () => {
               if (!document.hidden && readyRef.current && playerRef.current) {
                 try {
@@ -124,8 +121,7 @@ export default function useYouTubePlayer() {
               clearInterval(progressTimer.current);
             } else if (e.data === ENDED) {
               clearInterval(progressTimer.current);
-              update({ playing: false, progress: 0 });
-              onEndRef.current?.();
+              update({ playing: false, progress: 0, trackEndedAt: Date.now() });
             } else if (e.data === CUED) {
               update({ duration: p.getDuration() || 0 });
             }
@@ -152,7 +148,7 @@ export default function useYouTubePlayer() {
     };
   }, [update]);
 
-  const play = useCallback((track, onEnd) => {
+  const play = useCallback((track) => {
     if (!track?.videoId) return;
 
     const curId = state.currentTrack?.videoId;
@@ -162,14 +158,13 @@ export default function useYouTubePlayer() {
       return;
     }
 
-    update({ currentTrack: track, progress: 0, duration: 0, error: null, loading: true });
+    update({ currentTrack: track, progress: 0, duration: 0, error: null, loading: true, trackEndedAt: 0 });
 
     if (!readyRef.current || !playerRef.current) {
-      pendingRef.current = { id: track.videoId, onEnd };
+      pendingRef.current = { id: track.videoId };
       return;
     }
 
-    onEndRef.current = onEnd || null;
     playerRef.current.loadVideoById(track.videoId);
     playerRef.current.setVolume(volumeRef.current * 100);
   }, [state.currentTrack?.videoId, state.playing, update]);
@@ -195,7 +190,7 @@ export default function useYouTubePlayer() {
   const stop = useCallback(() => {
     if (playerRef.current) playerRef.current.stopVideo();
     clearInterval(progressTimer.current);
-    update({ playing: false, progress: 0, currentTrack: null, error: null });
+    update({ playing: false, progress: 0, currentTrack: null, error: null, trackEndedAt: 0 });
   }, [update]);
 
   return { ...state, containerRef, play, togglePlay, seek, setVolume, stop, update };
