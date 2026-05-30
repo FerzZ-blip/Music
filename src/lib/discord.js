@@ -1,11 +1,11 @@
 const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID
-const REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI
 const SCOPE = 'identify'
 
 function getAuthURL(state) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173'
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: origin,
     response_type: 'token',
     scope: SCOPE,
     state,

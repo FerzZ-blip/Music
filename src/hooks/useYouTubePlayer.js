@@ -44,6 +44,31 @@ export default function useYouTubePlayer() {
     setState((prev) => ({ ...prev, ...patch }));
   }, []);
 
+  // Keep playback alive when tab is hidden
+  useEffect(() => {
+    let ctx
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)()
+      // silent oscillator keeps audio channel active
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      osc.connect(gain).connect(ctx.destination)
+      osc.start()
+    } catch {}
+    if (!ctx) return
+
+    const handleVisibility = () => {
+      if (ctx.state === 'suspended') ctx.resume()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      ctx.close()
+    }
+  }, [])
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -74,6 +99,16 @@ export default function useYouTubePlayer() {
               p.setVolume(volumeRef.current * 100);
               onEndRef.current = onEnd || null;
             }
+            // Resume playback if tab was hidden and player got paused
+            document.addEventListener('visibilitychange', () => {
+              if (!document.hidden && readyRef.current && playerRef.current) {
+                try {
+                  if (playerRef.current.getPlayerState?.() !== YT.PlayerState.PLAYING) {
+                    playerRef.current.playVideo()
+                  }
+                } catch {}
+              }
+            })
           },
           onStateChange: (e) => {
             const PLAYING = 1, PAUSED = 2, ENDED = 0, CUED = 5, BUFFERING = 3;

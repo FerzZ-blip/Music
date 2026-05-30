@@ -3,6 +3,9 @@ import { getArtistName } from '../utils'
 
 const BRIDGE_PORT = import.meta.env.BRIDGE_PORT || '6474'
 const WS_URL = `ws://localhost:${BRIDGE_PORT}`
+const IS_LOCAL = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+)
 
 export default function useDiscordPresence(track, playing) {
   const [bridgeConnected, setBridgeConnected] = useState(false)
@@ -42,6 +45,8 @@ export default function useDiscordPresence(track, playing) {
   }, [])
 
   useEffect(() => {
+    if (!IS_LOCAL) return
+
     function connect() {
       if (wsRef.current?.readyState === WebSocket.OPEN) return
 
