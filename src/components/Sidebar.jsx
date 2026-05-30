@@ -10,15 +10,12 @@ const navItems = [
   { icon: Heart, label: 'crate' },
 ];
 
-export default function Sidebar({ activeView, onNavigate, dark, onThemeToggle, onLogin }) {
+export default function Sidebar({ activeView, onNavigate, dark, onThemeToggle, onLogin, open, onToggle }) {
   const { user, discord } = useAuth();
   const avatar = user?.photoURL || discord?.user?.avatar && `https://cdn.discordapp.com/avatars/${discord.user.id}/${discord.user.avatar}.webp?size=64`;
 
-  return (
-    <aside className="fixed left-0 top-0 bottom-24 w-20 flex flex-col items-center py-8 gap-2 z-30">
-      <div className="mb-6">
-        <Sparkle size={24} weight="fill" className="text-rose-400" />
-      </div>
+  const navContent = (closeOnNav) => (
+    <>
       <nav className="flex flex-col items-center gap-1 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -26,7 +23,7 @@ export default function Sidebar({ activeView, onNavigate, dark, onThemeToggle, o
           return (
             <button
               key={item.label}
-              onClick={() => onNavigate(item.label)}
+              onClick={() => { onNavigate(item.label); if (closeOnNav) onToggle?.(); }}
               className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${
                 isActive
                   ? 'bg-rose-200/60 text-rose-600 shadow-sm dark:bg-rose-800/40 dark:text-rose-300'
@@ -59,6 +56,36 @@ export default function Sidebar({ activeView, onNavigate, dark, onThemeToggle, o
           )}
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile drawer */}
+      <div className={`fixed inset-0 z-50 md:hidden ${open ? '' : 'pointer-events-none'}`}>
+        <div
+          className={`absolute inset-0 bg-warm-950/40 backdrop-blur-sm transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`}
+          onClick={onToggle}
+        />
+        <div
+          className={`absolute left-0 top-0 bottom-0 transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        >
+          <div className="w-20 flex flex-col items-center py-8 gap-2 h-full bg-warm-50 dark:bg-warm-950">
+            <div className="mb-6">
+              <Sparkle size={24} weight="fill" className="text-rose-400" />
+            </div>
+            {navContent(true)}
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop sidebar */}
+      <aside className="fixed left-0 top-0 bottom-24 w-20 z-30 hidden md:flex flex-col items-center py-8 gap-2">
+        <div className="mb-6">
+          <Sparkle size={24} weight="fill" className="text-rose-400" />
+        </div>
+        {navContent(false)}
+      </aside>
+    </>
   );
 }

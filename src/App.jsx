@@ -16,7 +16,7 @@ import QueuePanel from './components/QueuePanel';
 import LyricsPanel from './components/LyricsPanel';
 import TrackList from './components/TrackList';
 import LoginModal from './components/LoginModal';
-import { Sparkle, ArrowLeft, User, MusicNotes, MicrophoneStage, VinylRecord, Heart, ThumbsUp, ThumbsDown, ClockCounterClockwise } from '@phosphor-icons/react';
+import { Sparkle, ArrowLeft, User, MusicNotes, MicrophoneStage, VinylRecord, Heart, ThumbsUp, ThumbsDown, ClockCounterClockwise, List } from '@phosphor-icons/react';
 
 export default function App() {
   const [activeView, setActiveView] = useState('home');
@@ -48,6 +48,7 @@ export default function App() {
     catch { return []; }
   });
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
@@ -617,7 +618,7 @@ export default function App() {
     <div className="min-h-[100dvh] flex flex-col">
       {!showNowPlaying && (
         <>
-          <Sidebar activeView={activeView} onNavigate={handleNavigate} dark={dark} onThemeToggle={() => setDark((d) => !d)} onLogin={() => setLoginOpen(true)} />
+          <Sidebar activeView={activeView} onNavigate={handleNavigate} dark={dark} onThemeToggle={() => setDark((d) => !d)} onLogin={() => setLoginOpen(true)} open={sidebarOpen} onToggle={() => setSidebarOpen((s) => !s)} />
           <MobileNav activeView={activeView} onNavigate={handleNavigate} dark={dark} onThemeToggle={() => setDark((d) => !d)} />
         </>
       )}
@@ -626,7 +627,9 @@ export default function App() {
         {!showNowPlaying && (
           <div className="flex items-center justify-between mb-6 md:mb-7">
             <div className="flex items-center gap-2 md:gap-3">
-              <Sparkle size={18} weight="fill" className="text-rose-400 dark:text-rose-300 md:hidden" />
+              <button onClick={() => setSidebarOpen((s) => !s)} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
+                <List size={18} weight="bold" />
+              </button>
               <Sparkle size={20} weight="fill" className="text-rose-400 dark:text-rose-300 hidden md:block" />
               <h1 className="text-base md:text-lg font-semibold text-warm-800 dark:text-warm-200 tracking-tight">lullaby</h1>
               {activeView !== 'home' && !searchQuery && (
