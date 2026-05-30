@@ -18,6 +18,11 @@ export default function HomeView({ onPlay, currentTrack, playing, onAddToQueue, 
 
   useEffect(() => {
     let cancelled = false;
+
+    const timeout = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 6000);
+
     async function fetchAll() {
       try {
         const [trend, top, hot] = await Promise.all([
@@ -31,11 +36,14 @@ export default function HomeView({ onPlay, currentTrack, playing, onAddToQueue, 
           setCurated(Array.isArray(hot) ? hot.slice(0, 8) : []);
         }
       } catch {} finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          clearTimeout(timeout);
+        }
       }
     }
     fetchAll();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, []);
 
   async function handleMoodSelect(mood) {

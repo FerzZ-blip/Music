@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, Plus, Check, MusicNotes } from '@phosphor-icons/react';
 
-export default function AddToPlaylistModal({ visible, track, playlists, onClose, onAdd, onCreate }) {
+export default function AddToPlaylistModal({ visible, track, playlists, onClose, onSave }) {
   const [selected, setSelected] = useState(new Set());
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -20,14 +20,16 @@ export default function AddToPlaylistModal({ visible, track, playlists, onClose,
   function handleCreate() {
     const trimmed = newName.trim();
     if (!trimmed) return;
-    const id = onCreate(trimmed);
-    setSelected((prev) => new Set(prev).add(id));
+    const ids = onSave(track, [...selected], trimmed);
+    if (ids) {
+      setSelected(new Set(ids));
+    }
     setNewName('');
     setCreating(false);
   }
 
   function handleDone() {
-    selected.forEach((id) => onAdd(track, id));
+    onSave(track, [...selected], null);
     setSelected(new Set());
     onClose();
   }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Heartbeat, VinylRecord, MusicNotes, SpeakerSlash, Prohibit, PaperPlaneTilt, User, Sparkle } from '@phosphor-icons/react';
 import { useAuth } from '../contexts/AuthContext';
 import { submitFeedback, getFeedback } from '../api/feedback';
+import { getFirebaseDb } from '../lib/firebase';
 import { timeAgo } from '../utils';
 
 const moods = [
@@ -19,8 +20,10 @@ export default function FeedbackSection({ onLogin }) {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   const [feedbackList, setFeedbackList] = useState(null);
   const [listLoading, setListLoading] = useState(true);
+  const [fetchTick, setFetchTick] = useState(0);
 
   const avatar = user?.photoURL || (discord?.user?.avatar && `https://cdn.discordapp.com/avatars/${discord.user.id}/${discord.user.avatar}.webp?size=64`);
   const displayName = user?.displayName || discord?.user?.global_name || discord?.user?.username || '';
@@ -33,19 +36,30 @@ export default function FeedbackSection({ onLogin }) {
 
   useEffect(() => {
     let cancelled = false;
-    getFeedback().then((list) => {
-      if (!cancelled) {
+    let retries = 0;
+
+    function fetch() {
+      getFeedback().then((list) => {
+        if (cancelled) return;
+        if (list.length === 0 && retries < 3 && !getFirebaseDb()) {
+          retries++;
+          setTimeout(fetch, 500);
+          return;
+        }
         setFeedbackList(list);
         setListLoading(false);
-      }
-    });
+      });
+    }
+
+    fetch();
     return () => { cancelled = true; };
-  }, [submitted]);
+  }, [fetchTick]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!mood || !message.trim() || submitting) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       await submitFeedback({
         name: name.trim() || '',
@@ -54,13 +68,30 @@ export default function FeedbackSection({ onLogin }) {
         userId,
         avatar: avatar || '',
       });
+
+      const optimistic = {
+        id: `opt_${Date.now()}`,
+        name: name.trim() || '',
+        mood,
+        message: message.trim(),
+        userId,
+        avatar: avatar || '',
+        createdAt: Date.now(),
+      };
+      setFeedbackList((prev) => (prev ? [optimistic, ...prev] : prev));
+
       setSubmitted(true);
       setMood(null);
       setMessage('');
       setName(displayName || '');
-      setTimeout(() => setSubmitted(false), 3000);
-    } catch {
+      setTimeout(() => {
+        setSubmitted(false);
+        setFetchTick((t) => t + 1);
+      }, 3000);
+    } catch (err) {
       setSubmitted(false);
+      setSubmitError(err?.message || 'failed to send signal');
+      console.error('Feedback submit error:', err);
     } finally {
       setSubmitting(false);
     }
@@ -153,6 +184,9 @@ export default function FeedbackSection({ onLogin }) {
               </span>
             </div>
 
+            {submitError && (
+              <p className="text-[11px] text-rose-500 bg-rose-100/50 dark:bg-rose-900/30 rounded-xl px-3 py-2">{submitError}</p>
+            )}
             <div className="flex justify-end">
               <button
                 type="submit"

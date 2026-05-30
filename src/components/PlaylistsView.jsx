@@ -71,9 +71,11 @@ function PlaylistCard({ playlist, onSelect, onRename, onDelete, onPlay }) {
 }
 
 export default function PlaylistsView({ playlists, currentTrack, playing, onPlay, onRename, onDelete, onCreate, onRemoveTrack }) {
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+
+  const selectedPlaylist = selectedId ? playlists.find((p) => p.id === selectedId) : null;
 
   function handleCreate() {
     const trimmed = newName.trim();
@@ -84,28 +86,27 @@ export default function PlaylistsView({ playlists, currentTrack, playing, onPlay
   }
 
   if (selectedPlaylist) {
-    const pl = playlists.find((p) => p.id === selectedPlaylist.id) || selectedPlaylist;
     return (
       <section className="animate-fade-in">
         <div className="flex items-center gap-3 mb-5">
-          <button onClick={() => setSelectedPlaylist(null)} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
+          <button onClick={() => setSelectedId(null)} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
             <ArrowLeft size={16} weight="bold" />
           </button>
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-warm-800 dark:text-warm-200 truncate">{pl.name}</h2>
-            <p className="text-[11px] text-warm-400 dark:text-warm-500">{formatCount(pl.tracks?.length)}</p>
+            <h2 className="text-sm font-semibold text-warm-800 dark:text-warm-200 truncate">{selectedPlaylist.name}</h2>
+            <p className="text-[11px] text-warm-400 dark:text-warm-500">{formatCount(selectedPlaylist.tracks?.length)}</p>
           </div>
         </div>
 
-        {pl.tracks?.length > 0 ? (
+        {selectedPlaylist.tracks?.length > 0 ? (
           <div className="space-y-0.5">
-            {pl.tracks.map((track, i) => (
+            {selectedPlaylist.tracks.map((track, i) => (
               <div
                 key={`${track.videoId}-${i}`}
                 className="group flex items-center gap-3 p-2.5 rounded-xl transition-all hover:bg-warm-100 dark:hover:bg-warm-800/50"
               >
                 <button
-                  onClick={() => onPlay(pl, i)}
+                  onClick={() => onPlay(selectedPlaylist, i)}
                   className="w-9 h-9 rounded-lg overflow-hidden bg-warm-200 dark:bg-warm-800 shrink-0 flex items-center justify-center"
                 >
                   {track.thumbnail ? (
@@ -114,14 +115,14 @@ export default function PlaylistsView({ playlists, currentTrack, playing, onPlay
                     <Play size={12} className="text-warm-400" />
                   )}
                 </button>
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onPlay(pl, i)}>
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onPlay(selectedPlaylist, i)}>
                   <p className={`text-xs font-medium truncate ${track.videoId === currentTrack?.videoId ? 'text-rose-600 dark:text-rose-400' : 'text-warm-800 dark:text-warm-200'}`}>
                     {track.title || track.name}
                   </p>
                   <p className="text-[11px] text-warm-500 dark:text-warm-400 truncate">{getArtistName(track)}</p>
                 </div>
                 <button
-                  onClick={() => onRemoveTrack(pl.id, track.videoId)}
+                  onClick={() => onRemoveTrack(selectedPlaylist.id, track.videoId)}
                   className="text-warm-400 hover:text-rose-500 transition-all p-1 opacity-0 group-hover:opacity-100"
                 >
                   <Trash size={14} />
@@ -174,7 +175,7 @@ export default function PlaylistsView({ playlists, currentTrack, playing, onPlay
             <PlaylistCard
               key={pl.id}
               playlist={pl}
-              onSelect={setSelectedPlaylist}
+              onSelect={(pl) => setSelectedId(pl.id)}
               onRename={onRename}
               onDelete={onDelete}
               onPlay={onPlay}

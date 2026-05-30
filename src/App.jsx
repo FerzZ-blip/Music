@@ -19,6 +19,7 @@ import LoadingScreen from './components/LoadingScreen';
 import BottomSheet from './components/BottomSheet';
 import PlaylistsView from './components/PlaylistsView';
 import AddToPlaylistModal from './components/AddToPlaylistModal';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Sparkle, User, MusicNotes, Heart, ClockCounterClockwise, List } from '@phosphor-icons/react';
 import { isNative } from './lib/capacitor';
 
@@ -57,9 +58,24 @@ export default function App() {
     catch { return []; }
   });
   const [playlists, setPlaylists] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('playlists') || '[]'); }
-    catch { return []; }
+    try {
+      const stored = localStorage.getItem('playlists');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
   });
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('playlists');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0 && playlists.length === 0) {
+          setPlaylists(parsed);
+        }
+      }
+    } catch {}
+  }, []);
   const [pullRefresh, setPullRefresh] = useState(false);
   const pullStart = useRef(0);
   const pullY = useRef(0);
@@ -402,6 +418,32 @@ export default function App() {
     return id;
   }
 
+  function handleSaveToPlaylists(track, selectedIds, newName) {
+    if (!track?.videoId) return selectedIds;
+    const allIds = [...selectedIds];
+
+    if (newName) {
+      const newId = `pl_${Date.now()}`;
+      setPlaylists((prev) => [
+        ...prev,
+        { id: newId, name: newName, tracks: [track], createdAt: Date.now() },
+      ]);
+      allIds.push(newId);
+      return allIds;
+    }
+
+    if (allIds.length === 0) return allIds;
+
+    setPlaylists((prev) =>
+      prev.map((pl) => {
+        if (!allIds.includes(pl.id)) return pl;
+        if (pl.tracks.some((t) => t.videoId === track.videoId)) return pl;
+        return { ...pl, tracks: [...pl.tracks, track] };
+      })
+    );
+    return allIds;
+  }
+
   function handleDeletePlaylist(id) {
     setPlaylists((prev) => prev.filter((pl) => pl.id !== id));
   }
@@ -620,7 +662,9 @@ export default function App() {
           </div>
         )}
         <div className="relative min-h-[200px]">
-          {renderContent()}
+          <ErrorBoundary>
+            {renderContent()}
+          </ErrorBoundary>
           {searchLoading && (
             <LoadingScreen overlay message="sifting through the stacks..." />
           )}
@@ -681,8 +725,7 @@ export default function App() {
         track={yt.currentTrack}
         playlists={playlists}
         onClose={() => setPlaylistModalOpen(false)}
-        onAdd={handleAddToPlaylist}
-        onCreate={handleCreatePlaylist}
+        onSave={handleSaveToPlaylists}
       />
     </div>
   );

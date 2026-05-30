@@ -18,13 +18,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+        (async () => {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) await reg.unregister();
+        })();
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-CAsovxft.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C5wIgoAV.css">
+    <script type="module" crossorigin src="/assets/index-pifyPDXv.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Mf16_sn9.css">
   </head>
   <body>
     <div id="root"></div>
