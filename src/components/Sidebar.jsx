@@ -1,12 +1,9 @@
-import { Sparkle, House, Compass, ClockCounterClockwise, MicrophoneStage, VinylRecord, Heart, Moon, Sun, User, DiscordLogo, GoogleLogo } from '@phosphor-icons/react';
+import { Sparkle, House, ClockCounterClockwise, Heart, Moon, Sun, User } from '@phosphor-icons/react';
 import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
   { icon: House, label: 'home' },
-  { icon: Compass, label: 'dig' },
   { icon: ClockCounterClockwise, label: 'spins' },
-  { icon: MicrophoneStage, label: 'artists' },
-  { icon: VinylRecord, label: 'albums' },
   { icon: Heart, label: 'crate' },
 ];
 

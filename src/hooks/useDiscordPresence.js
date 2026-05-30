@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { getArtistName } from '../utils'
 
 const BRIDGE_PORT = import.meta.env.BRIDGE_PORT || '6474'
 const WS_URL = `ws://localhost:${BRIDGE_PORT}`
@@ -25,12 +26,15 @@ export default function useDiscordPresence(track, playing) {
       return
     }
 
+    const artist = getArtistName(t)
+    const thumb = t.thumbnail || `https://i.ytimg.com/vi/${t.videoId}/maxresdefault.jpg`
+
     ws.send(JSON.stringify({
       type: 'presence',
       details: t.title?.slice(0, 128) || 'Unknown track',
-      state: t.artist ? `by ${t.artist}`.slice(0, 128) : '',
-      largeImageKey: 'music',
-      largeImageText: t.title || '',
+      state: artist ? `by ${artist}`.slice(0, 128) : '',
+      largeImageKey: thumb,
+      largeImageText: `${t.title || ''}${artist ? ` — ${artist}` : ''}`,
       smallImageKey: p ? 'play' : 'pause',
       smallImageText: p ? 'playing' : 'paused',
       startTimestamp: p ? Date.now() : undefined,

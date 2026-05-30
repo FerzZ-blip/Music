@@ -25,6 +25,7 @@ export default function useYouTubePlayer() {
   const [state, setState] = useState({
     ready: false,
     playing: false,
+    loading: false,
     progress: 0,
     duration: 0,
     currentTrack: null,
@@ -75,10 +76,10 @@ export default function useYouTubePlayer() {
             }
           },
           onStateChange: (e) => {
-            const PLAYING = 1, PAUSED = 2, ENDED = 0, CUED = 5;
+            const PLAYING = 1, PAUSED = 2, ENDED = 0, CUED = 5, BUFFERING = 3;
             if (e.data === PLAYING) {
               const d = p.getDuration() || 0;
-              update({ playing: true, duration: d, error: null });
+              update({ playing: true, loading: false, duration: d, error: null });
               clearInterval(progressTimer.current);
               progressTimer.current = setInterval(() => {
                 if (p?.getCurrentTime) update({ progress: p.getCurrentTime() });
@@ -95,9 +96,9 @@ export default function useYouTubePlayer() {
             }
           },
           onError: (e) => {
-            update({ error: e.data });
+            update({ error: e.data, loading: false });
             if (e.data === 150 || e.data === 101) {
-              update({ error: 'embedding restricted' });
+              update({ error: 'embedding restricted', loading: false });
             }
           },
         },
@@ -126,7 +127,7 @@ export default function useYouTubePlayer() {
       return;
     }
 
-    update({ currentTrack: track, progress: 0, duration: 0, error: null });
+    update({ currentTrack: track, progress: 0, duration: 0, error: null, loading: true });
 
     if (!readyRef.current || !playerRef.current) {
       pendingRef.current = { id: track.videoId, onEnd };

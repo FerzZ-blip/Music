@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, CaretDown, Shuffle, Repeat, SpeakerHigh, TextAlignLeft, Queue,
-  Heart, Heartbeat, VinylRecord, MicrophoneStage, MusicNotes,
+  Heart, Heartbeat, MusicNotes,
 } from '@phosphor-icons/react';
 import useLyrics from '../hooks/useLyrics';
 import { getArtistName } from '../utils';
@@ -18,7 +18,6 @@ export default function NowPlayingView({
   onTogglePlay, onSeek, onVolume, onPrev, onNext, onClose, onLyrics,
   repeat, onRepeat, shuffle, onShuffle,
   liked, onLike, saved, onSave,
-  onViewAlbum, onViewArtist,
 }) {
   function cycleRepeat() {
     const modes = ['off', 'one', 'all'];
@@ -97,14 +96,7 @@ export default function NowPlayingView({
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-2">
-            <button onClick={onViewAlbum} className="flex items-center gap-1 text-[11px] text-warm-400 hover:text-warm-600 dark:text-warm-500 dark:hover:text-warm-300 transition-colors">
-              <VinylRecord size={13} /> album
-            </button>
-            <button onClick={onViewArtist} className="flex items-center gap-1 text-[11px] text-warm-400 hover:text-warm-600 dark:text-warm-500 dark:hover:text-warm-300 transition-colors">
-              <MicrophoneStage size={13} /> artist
-            </button>
-          </div>
+
         </div>
 
         <div className="w-full mb-4">

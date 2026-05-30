@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, SpeakerHigh, SpeakerX, TextAlignLeft, Queue, Heart, Heartbeat, Playlist, CaretUp, Repeat, Shuffle } from '@phosphor-icons/react';
+import { Play, Pause, SkipBack, SkipForward, SpeakerHigh, SpeakerX, TextAlignLeft, Queue, Playlist, CaretUp } from '@phosphor-icons/react';
 import { useState, useRef } from 'react';
 import { getArtistName } from '../utils';
 
@@ -14,14 +14,10 @@ export default function Player({
   onTogglePlay, onSeek, onVolume, onLyrics, onQueueToggle,
   onPrev, onNext, onExpand, queueLength, queueIndex,
   repeat, onRepeat, shuffle, onShuffle,
-  liked, onLike, saved, onSave,
+  saved, onSave,
+  onAddToQueue,
   bridgeConnected, discordConnected,
 }) {
-  function cycleRepeat() {
-    const modes = ['off', 'one', 'all'];
-    const idx = modes.indexOf(repeat);
-    onRepeat(modes[(idx + 1) % modes.length]);
-  }
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const progressRef = useRef(null);
@@ -113,38 +109,48 @@ export default function Player({
             <span className="text-[11px] text-rose-600 dark:text-rose-400 whitespace-nowrap">playback unavailable</span>
           </div>
         )}
-        <div className="hidden sm:flex items-center gap-1">
-          <button onClick={onLyrics} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50" title="lyrics">
-            <TextAlignLeft size={17} />
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onSave}
+            className={`p-2 rounded-xl transition-all ${saved ? 'text-rose-500 bg-rose-100/60 dark:text-rose-400 dark:bg-rose-900/40' : 'text-warm-400 hover:text-rose-500 hover:bg-warm-200/50 dark:text-warm-500 dark:hover:text-rose-400 dark:hover:bg-warm-800/50'}`}
+            title={saved ? 'saved to crate' : 'save to crate'}
+          >
+            <Playlist size={17} weight={saved ? 'fill' : 'regular'} />
           </button>
-          <button onClick={onLike} className={`p-2 rounded-xl transition-all ${liked ? 'text-rose-500 bg-rose-100/60 dark:text-rose-400 dark:bg-rose-900/40' : 'text-warm-400 hover:text-rose-500 hover:bg-warm-200/50 dark:text-warm-500 dark:hover:text-rose-400 dark:hover:bg-warm-800/50'}`} title={liked ? 'liked' : 'like'}>
-            <Heart size={17} weight={liked ? 'fill' : 'regular'} />
-          </button>
-          <button onClick={onSave} className={`p-2 rounded-xl transition-all ${saved ? 'text-rose-500 bg-rose-100/60 dark:text-rose-400 dark:bg-rose-900/40' : 'text-warm-400 hover:text-rose-500 hover:bg-warm-200/50 dark:text-warm-500 dark:hover:text-rose-400 dark:hover:bg-warm-800/50'}`} title={saved ? 'saved' : 'save to library'}>
-            <Heartbeat size={17} weight={saved ? 'fill' : 'regular'} />
+          <button
+            onClick={onAddToQueue}
+            className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50"
+            title="add to queue"
+          >
+            <Queue size={17} weight="regular" />
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-warm-400 dark:text-warm-500 tabular-nums w-7 text-right hidden sm:block">{formatTime(progress)}</span>
-
-          <button onClick={onPrev} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all hidden sm:block dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
-            <SkipBack size={16} weight="fill" />
+        <div className="flex items-center gap-0.5">
+          <button onClick={onPrev} className="p-1.5 sm:p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
+            <SkipBack size={15} weight="fill" />
           </button>
-          <button onClick={onShuffle} className={`p-2 rounded-xl transition-all hidden sm:block ${shuffle ? 'text-rose-500 bg-rose-100/60 dark:text-rose-400 dark:bg-rose-900/40' : 'text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50'}`} title={shuffle ? 'shuffle on' : 'shuffle off'}>
-            <Shuffle size={15} weight={shuffle ? 'fill' : 'regular'} />
+          <button
+            onClick={onTogglePlay}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-rose-300 hover:bg-rose-400 text-white flex items-center justify-center transition-all active:scale-90 shadow-sm dark:bg-rose-700 dark:hover:bg-rose-600"
+            title={playing ? 'pause' : 'play'}
+          >
+            {playing ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" />}
           </button>
-          <button onClick={cycleRepeat} className={`p-2 rounded-xl transition-all hidden sm:block ${repeat === 'off' ? 'text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50' : 'text-rose-500 bg-rose-100/60 dark:text-rose-400 dark:bg-rose-900/40'}`} title={repeat === 'one' ? 'repeat one' : repeat === 'all' ? 'repeat all' : 'repeat off'}>
-            <Repeat size={15} weight={repeat !== 'off' ? 'fill' : 'regular'} />
+          <button onClick={onNext} className="p-1.5 sm:p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
+            <SkipForward size={15} weight="fill" />
           </button>
-          <button onClick={onNext} className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all hidden sm:block dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50">
-            <SkipForward size={16} weight="fill" />
-          </button>
-
-          <span className="text-[11px] text-warm-400 dark:text-warm-500 tabular-nums w-7 hidden sm:block">{formatTime(duration)}</span>
         </div>
 
         <div className="flex items-center gap-1">
+          <button
+            onClick={onLyrics}
+            className="p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50 hidden sm:flex"
+            title="lyrics"
+          >
+            <TextAlignLeft size={15} />
+          </button>
           <button
             onClick={onQueueToggle}
             className="relative p-2 rounded-xl text-warm-400 hover:text-warm-600 hover:bg-warm-200/50 transition-all dark:text-warm-500 dark:hover:text-warm-300 dark:hover:bg-warm-800/50"

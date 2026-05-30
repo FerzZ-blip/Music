@@ -27,18 +27,15 @@ async function connect() {
   DiscordRPC.register(CLIENT_ID);
   rpc = new DiscordRPC.Client({ transport: 'ipc' });
 
-  rpc.on('ready', () => {
+  try {
+    await rpc.connect(CLIENT_ID);
     console.log('[bridge] Discord RPC connected');
     if (activity) rpc.setActivity(activity).catch(() => {});
-  });
 
-  rpc.on('disconnected', () => {
-    console.log('[bridge] Discord RPC disconnected, reconnecting in 15s...');
-    setTimeout(connect, 15000);
-  });
-
-  try {
-    await rpc.connect({ clientId: CLIENT_ID });
+    rpc.on('disconnected', () => {
+      console.log('[bridge] Discord RPC disconnected, reconnecting in 15s...');
+      setTimeout(connect, 15000);
+    });
   } catch (e) {
     console.error('[bridge] Failed to connect to Discord:', e.message);
     console.log('[bridge] Make sure Discord desktop is running');

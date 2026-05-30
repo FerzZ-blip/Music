@@ -142,6 +142,88 @@ html.dark ::-webkit-scrollbar-track {
   100% { background-position: 200% 0; }
 }
 
+/* --- Natural sky animations --- */
+
+@keyframes sparkle-distant {
+  0%, 100% { opacity: 0.06; }
+  45% { opacity: 0.18; }
+  48% { opacity: 0.25; }
+  50% { opacity: 0.12; }
+}
+
+@keyframes sparkle-medium {
+  0%, 100% { opacity: 0.04; }
+  30% { opacity: 0.15; }
+  33% { opacity: 0.35; }
+  35% { opacity: 0.12; }
+  65% { opacity: 0.2; }
+}
+
+@keyframes sparkle-bright {
+  0%, 100% { opacity: 0.03; }
+  20% { opacity: 0.12; }
+  22% { opacity: 0.45; }
+  24% { opacity: 0.08; }
+  50% { opacity: 0.18; }
+  53% { opacity: 0.5; }
+  55% { opacity: 0.1; }
+  80% { opacity: 0.2; }
+}
+
+@keyframes glow-shimmer {
+  0%, 100% { opacity: 0.06; }
+  40% { opacity: 0.15; }
+  42% { opacity: 0.25; }
+  44% { opacity: 0.1; }
+}
+
+/* Meteor arc keyframes — animated along offset-path */
+@keyframes meteor-arc {
+  0%   { offset-distance: 0%; opacity: 0; }
+  3%   { opacity: 1; }
+  25%  { opacity: 0.9; }
+  55%  { opacity: 0.35; }
+  80%  { opacity: 0.1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+@keyframes meteor-arc-fast {
+  0%   { offset-distance: 0%; opacity: 0; }
+  4%   { opacity: 1; }
+  30%  { opacity: 0.85; }
+  60%  { opacity: 0.25; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+@keyframes meteor-arc-slow {
+  0%   { offset-distance: 0%; opacity: 0; }
+  3%   { opacity: 0.9; }
+  35%  { opacity: 0.8; }
+  70%  { opacity: 0.2; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+/* Curved paths for each meteor */
+.meteor-track-1  { offset-path: path("M 0,0 Q 180,-70 500,260 C 550,320 580,380 600,450"); }
+.meteor-track-2  { offset-path: path("M 0,0 Q 120,-50 350,280 C 380,340 390,400 400,480"); }
+.meteor-track-3  { offset-path: path("M 0,0 Q 200,-60 600,240 C 650,290 680,350 700,420"); }
+.meteor-track-4  { offset-path: path("M 0,0 Q 100,-40 300,320 C 330,380 340,440 350,520"); }
+.meteor-track-5  { offset-path: path("M 0,0 Q 160,-55 450,280 C 490,330 510,390 530,460"); }
+.meteor-track-6  { offset-path: path("M 0,0 Q 220,-80 550,220 C 600,270 630,330 650,400"); }
+.meteor-track-7  { offset-path: path("M 0,0 Q 140,-45 380,300 C 410,360 420,420 430,500"); }
+.meteor-track-8  { offset-path: path("M 0,0 Q 190,-65 520,250 C 560,300 590,360 620,430"); }
+
+@keyframes sky-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(1.5%, 0.8%) scale(1.03); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes message-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
 .animate-fade-in {
   animation: fade-in 0.5s ease-out both;
 }
@@ -174,6 +256,91 @@ html.dark ::-webkit-scrollbar-track {
   background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-sky-drift {
+  animation: sky-drift 22s ease-in-out infinite;
+}
+
+.animate-message-float {
+  animation: message-float 3s ease-in-out infinite;
+}
+
+/* Meteor container — follows the curved path */
+.meteor {
+  position: absolute;
+  pointer-events: none;
+  offset-anchor: 100% 50%;
+  offset-rotate: auto;
+  will-change: offset-distance, opacity;
+}
+
+/* Meteor tail — thin, natural taper, very gradual fade */
+.meteor-tail {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  transform-origin: right center;
+}
+
+.meteor-tail-glow {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  filter: blur(6px);
+}
+
+/* Meteor head — small bright dot */
+.meteor-head {
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  border-radius: 50%;
+}
+
+.meteor-head-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  background: white;
+}
+
+/* Star glow — very soft, no scaling, just subtle shimmer */
+.star-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: glow-shimmer 4s ease-in-out infinite;
+  filter: blur(1px);
+}
+
+.dist-star {
+  animation: sparkle-distant 5s ease-in-out infinite;
+}
+.med-star {
+  animation: sparkle-medium 4s ease-in-out infinite;
+}
+.bright-star {
+  animation: sparkle-bright 6s ease-in-out infinite;
+}
+
+.sky-top-fade {
+  background: radial-gradient(ellipse 100% 50% at 50% 0%, transparent 0%, rgba(250, 243, 236, 0.2) 60%, transparent 100%);
+}
+html.dark .sky-top-fade {
+  background: radial-gradient(ellipse 100% 50% at 50% 0%, transparent 0%, rgba(44, 28, 12, 0.25) 60%, transparent 100%);
+}
+
+.sky-bot-fade {
+  background: linear-gradient(to top, rgba(250, 243, 236, 0.12) 0%, transparent 100%);
+}
+html.dark .sky-bot-fade {
+  background: linear-gradient(to top, rgba(44, 28, 12, 0.15) 0%, transparent 100%);
 }
 
 .stagger-1 { animation-delay: 0.04s; }

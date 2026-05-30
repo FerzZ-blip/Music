@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { initFirebase, getFirebaseAuth, signInGoogle, signOutFirebase } from '../lib/firebase'
+import { initFirebase, getFirebaseAuth, signInGoogle as firebaseSignInGoogle, signOutFirebase } from '../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { connectDiscord, fetchDiscordUser, disconnectDiscord, getStoredDiscord, storeDiscord } from '../lib/discord'
 
@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signInGoogle = useCallback(async () => {
-    const u = await signInGoogle()
+    const u = await firebaseSignInGoogle()
     setUser(u)
     return u
   }, [])

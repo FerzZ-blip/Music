@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { getSong, searchTracks, getAlbum, getArtist } from './api/verome';
-import { getHotTracks, parseEid } from './api/openwhyd';
-import { normalizeTrack, normalizeTracks, normalizeAlbum, hdThumb, getArtistName } from './utils';
+import { getSong, searchTracks } from './api/verome';
+import { normalizeTrack, hdThumb, getArtistName } from './utils';
 import useYouTubePlayer from './hooks/useYouTubePlayer';
 import useDiscordPresence from './hooks/useDiscordPresence';
 import { prefetchLyrics } from './hooks/useLyrics';
@@ -16,7 +15,8 @@ import QueuePanel from './components/QueuePanel';
 import LyricsPanel from './components/LyricsPanel';
 import TrackList from './components/TrackList';
 import LoginModal from './components/LoginModal';
-import { Sparkle, ArrowLeft, User, MusicNotes, MicrophoneStage, VinylRecord, Heart, ThumbsUp, ThumbsDown, ClockCounterClockwise, List } from '@phosphor-icons/react';
+import LoadingScreen from './components/LoadingScreen';
+import { Sparkle, User, MusicNotes, Heart, ClockCounterClockwise, List } from '@phosphor-icons/react';
 
 export default function App() {
   const [activeView, setActiveView] = useState('home');
@@ -27,9 +27,7 @@ export default function App() {
   const [queueOpen, setQueueOpen] = useState(false);
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(-1);
-  const [detailView, setDetailView] = useState(null);
-  const [detailData, setDetailData] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+
   const [showNowPlaying, setShowNowPlaying] = useState(false);
   const [volume, setVolumeState] = useState(0.7);
   const [repeat, setRepeat] = useState('off');
@@ -50,6 +48,12 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setPageLoading(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -233,7 +237,6 @@ export default function App() {
 
   async function handleSearchAcross(query) {
     setSearchQuery(query);
-    setDetailView(null);
     if (!query.trim()) return;
     setSearchLoading(true);
     try {
@@ -251,45 +254,13 @@ export default function App() {
     finally { setSearchLoading(false); }
   }
 
-  async function handleNavigate(view) {
+  function handleNavigate(view) {
     setActiveView(view);
-    setDetailView(null);
     setSearchResults(null);
     setSearchQuery('');
-    if (view === 'dig') {
-      try {
-        const data = await getHotTracks();
-        setSearchResults(Array.isArray(data) ? data.slice(0, 20) : []);
-      } catch { setSearchResults([]); }
-    }
   }
 
-  function handleViewAlbum(browseId) {
-    setDetailView('album');
-    setDetailLoading(true);
-    getAlbum(browseId)
-      .then((data) => setDetailData(normalizeAlbum(data)))
-      .catch(() => setDetailData(null))
-      .finally(() => setDetailLoading(false));
-  }
 
-  function handleViewArtist(browseId) {
-    setDetailView('artist');
-    setDetailLoading(true);
-    getArtist(browseId)
-      .then((data) => {
-        if (data?.topSongs) data.topSongs = normalizeTracks(data.topSongs);
-        if (data?.topTracks) data.topTracks = normalizeTracks(data.topTracks);
-        setDetailData(data);
-      })
-      .catch(() => setDetailData(null))
-      .finally(() => setDetailLoading(false));
-  }
-
-  function handleBack() {
-    setDetailView(null);
-    setDetailData(null);
-  }
 
   function handleOpenNowPlaying() {
     if (yt.currentTrack) setShowNowPlaying(true);
@@ -322,6 +293,14 @@ export default function App() {
     });
   }
 
+  function handleAddToQueue() {
+    const track = yt.currentTrack;
+    if (!track?.videoId) return;
+    const exists = queue.find((t) => t.videoId === track.videoId);
+    if (exists) return;
+    setQueue((prev) => [...prev, track]);
+  }
+
   function handleQueueMove(from, to) {
     if (to < 0 || to >= queue.length) return;
     setQueue((prev) => {
@@ -335,80 +314,9 @@ export default function App() {
     else if (from > queueIndex && to <= queueIndex) setQueueIndex((i) => i + 1);
   }
 
-  function handleViewFromNowPlaying(type, id) {
-    setShowNowPlaying(false);
-    if (type === 'album') handleViewAlbum(id);
-    else if (type === 'artist' && id) handleViewArtist(id);
-    else if (type === 'artist' && yt.currentTrack?.artist) {
-      searchTracks(yt.currentTrack.artist, 'artists').then((data) => {
-        const artist = data?.results?.[0];
-        if (artist?.browseId) handleViewArtist(artist.browseId);
-      }).catch(() => {});
-    }
-  }
 
-  function renderDetail() {
-    if (!detailView || !detailData) return null;
 
-    if (detailView === 'album') {
-      const album = detailData?.album || detailData;
-      const tracks = detailData?.tracks || album?.tracks || [];
-      return (
-        <section className="animate-fade-in-up">
-          <button onClick={handleBack} className="flex items-center gap-1.5 text-xs text-warm-500 hover:text-warm-700 dark:text-warm-400 dark:hover:text-warm-200 mb-5 transition-colors">
-            <ArrowLeft size={14} weight="bold" /> back
-          </button>
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6 md:mb-8">
-            <div className="w-28 h-28 md:w-40 md:h-40 rounded-2xl overflow-hidden bg-warm-200 dark:bg-warm-800 shrink-0 shadow-md">
-              {album?.thumbnail ? (
-                <img src={hdThumb(album.thumbnail)} alt="" className="w-full h-full object-cover" />
-              ) : album?.thumbnails?.[0]?.url ? (
-                <img src={hdThumb(album.thumbnails[0].url)} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center"><VinylRecord size={40} className="text-warm-300 dark:text-warm-600" /></div>
-              )}
-            </div>
-            <div className="flex flex-col justify-center">
-              <p className="text-[11px] text-warm-400 dark:text-warm-500 uppercase tracking-wider mb-1">album</p>
-              <h2 className="text-xl font-semibold text-warm-800 dark:text-warm-200 mb-1">{album?.title || album?.name}</h2>
-              <p className="text-sm text-warm-500 dark:text-warm-400">{album?.artists?.map((a) => a.name).join(', ') || album?.artist?.name || ''}</p>
-              {tracks.length > 0 && <p className="text-xs text-warm-400 dark:text-warm-500 mt-1">{tracks.length} tracks</p>}
-            </div>
-          </div>
-          <TrackList tracks={tracks} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} loading={detailLoading} />
-        </section>
-      );
-    }
 
-    if (detailView === 'artist') {
-      const artist = detailData?.artist || detailData;
-      const topSongs = detailData?.topSongs || detailData?.topTracks || [];
-      return (
-        <section className="animate-fade-in-up">
-          <button onClick={handleBack} className="flex items-center gap-1.5 text-xs text-warm-500 hover:text-warm-700 mb-5 transition-colors">
-            <ArrowLeft size={14} weight="bold" /> back
-          </button>
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6 md:mb-8">
-            <div className="w-28 h-28 md:w-40 md:h-40 rounded-2xl overflow-hidden bg-warm-200 dark:bg-warm-800 shrink-0 shadow-md flex items-center justify-center">
-              <MicrophoneStage size={40} className="text-warm-300 dark:text-warm-600" />
-            </div>
-            <div className="flex flex-col justify-center">
-              <p className="text-[11px] text-warm-400 dark:text-warm-500 uppercase tracking-wider mb-1">artist</p>
-              <h2 className="text-xl font-semibold text-warm-800 dark:text-warm-200 mb-1">{artist?.name || ''}</h2>
-              {artist?.subscribers && <p className="text-xs text-warm-400 dark:text-warm-500">{artist.subscribers} subscribers</p>}
-            </div>
-          </div>
-          {topSongs.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-xs font-semibold text-warm-600 dark:text-warm-400 uppercase tracking-wide mb-3">top songs</h3>
-              <TrackList tracks={topSongs} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />
-            </div>
-          )}
-        </section>
-      );
-    }
-    return null;
-  }
 
   function renderContent() {
     if (showNowPlaying) {
@@ -435,13 +343,10 @@ export default function App() {
           onLike={() => handleToggleLike(yt.currentTrack)}
           saved={yt.currentTrack ? savedTracks.some((t) => t.videoId === yt.currentTrack.videoId) : false}
           onSave={() => handleSaveTrack(yt.currentTrack)}
-          onViewAlbum={() => handleViewFromNowPlaying('album')}
-          onViewArtist={() => handleViewFromNowPlaying('artist')}
+          onAddToQueue={handleAddToQueue}
         />
       );
     }
-
-    if (detailView) return renderDetail();
 
     if (searchResults && searchQuery && (searchResults.songs || Array.isArray(searchResults))) {
       if (Array.isArray(searchResults)) {
@@ -451,12 +356,12 @@ export default function App() {
               <h2 className="text-sm text-warm-500 dark:text-warm-400">found in the stacks — <span className="text-warm-700 dark:text-warm-200 font-medium">"{searchQuery}"</span></h2>
               <span className="text-xs text-warm-400 dark:text-warm-500 ml-auto">{searchResults.length} tracks</span>
             </div>
-            <TrackList tracks={searchResults} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} loading={searchLoading} />
+            <TrackList tracks={searchResults} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />
           </section>
         );
       }
 
-      const { songs = [], albums = [], artists = [] } = searchResults;
+      const { songs = [] } = searchResults;
       return (
         <div className="space-y-8 animate-fade-in">
           <h2 className="text-sm text-warm-500 dark:text-warm-400">found in the stacks — <span className="text-warm-700 dark:text-warm-200 font-medium">"{searchQuery}"</span></h2>
@@ -468,105 +373,10 @@ export default function App() {
                 <h3 className="text-xs font-semibold text-warm-600 dark:text-warm-400 uppercase tracking-wide">songs</h3>
                 <span className="text-[10px] text-warm-400 dark:text-warm-500">{songs.length}</span>
               </div>
-              <TrackList tracks={songs} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} loading={searchLoading} />
-            </section>
-          )}
-
-          {albums.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <VinylRecord size={14} className="text-peri-400 dark:text-peri-300" />
-                <h3 className="text-xs font-semibold text-warm-600 dark:text-warm-400 uppercase tracking-wide">albums</h3>
-                <span className="text-[10px] text-warm-400 dark:text-warm-500">{albums.length}</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 md:gap-3">
-                {albums.map((album, i) => (
-                  <button key={album.browseId || i} onClick={() => handleViewAlbum(album.browseId)} className="group text-left">
-                    <div className="aspect-square rounded-xl overflow-hidden bg-warm-200 dark:bg-warm-800 mb-1.5 md:mb-2 shadow-xs">
-                      {album.thumbnails?.[0]?.url ? (
-                        <img src={hdThumb(album.thumbnails[0].url)} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" loading="lazy" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center"><VinylRecord size={28} className="text-warm-300 dark:text-warm-600" /></div>
-                      )}
-                    </div>
-                    <p className="text-xs font-medium text-warm-800 dark:text-warm-200 truncate">{album.title}</p>
-                    <p className="text-[10px] text-warm-500 dark:text-warm-400 truncate">{album.artists?.map((a) => a.name).join(', ')}</p>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {artists.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <MicrophoneStage size={14} className="text-sage-400 dark:text-sage-300" />
-                <h3 className="text-xs font-semibold text-warm-600 dark:text-warm-400 uppercase tracking-wide">artists</h3>
-                <span className="text-[10px] text-warm-400 dark:text-warm-500">{artists.length}</span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {artists.map((artist, i) => (
-                  <button key={artist.browseId || i} onClick={() => handleViewArtist(artist.browseId)} className="group text-left">
-                    <div className="aspect-square rounded-xl overflow-hidden bg-warm-200 dark:bg-warm-800 mb-2 shadow-xs flex items-center justify-center">
-                      {artist.thumbnails?.[0]?.url ? (
-                        <img src={hdThumb(artist.thumbnails[0].url)} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" loading="lazy" />
-                      ) : (
-                        <MicrophoneStage size={28} className="text-warm-300 dark:text-warm-600" />
-                      )}
-                    </div>
-                    <p className="text-xs font-medium text-warm-800 dark:text-warm-200 truncate">{artist.title || artist.name}</p>
-                  </button>
-                ))}
-              </div>
+              <TrackList tracks={songs} onPlay={handlePlay} currentTrack={yt.currentTrack} playing={yt.playing} />
             </section>
           )}
         </div>
-      );
-    }
-
-    if (activeView === 'dig' && !searchQuery) {
-      if (!Array.isArray(searchResults)) {
-        return (
-          <section className="animate-fade-in">
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-14 rounded-xl bg-warm-200/60 dark:bg-warm-800/60 animate-pulse-soft" />
-        ))}
-            </div>
-          </section>
-        );
-      }
-      return (
-        <section className="animate-fade-in">
-          <div className="flex items-center gap-2 mb-5">
-            <MusicNotes size={16} className="text-rose-400 dark:text-rose-300" />
-            <h2 className="text-sm font-medium text-warm-700 dark:text-warm-300">dig this</h2>
-            <span className="text-[11px] text-warm-400 dark:text-warm-500 ml-auto">via openwhyd</span>
-          </div>
-          <div className="space-y-1">
-            {searchResults.length > 0 ? searchResults.map((track, i) => {
-              const eid = parseEid(track.eId);
-              return (
-                <div
-                  key={track._id || i}
-                  onClick={() => { if (eid.type === 'youtube') handlePlay({ videoId: eid.id, title: track.name, artist: track.uNm, thumbnail: hdThumb(track.img) }); }}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-warm-100 dark:hover:bg-warm-800/50 cursor-pointer transition-all duration-200 group animate-fade-in"
-                >
-                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-warm-200 dark:bg-warm-800 shrink-0 flex items-center justify-center">
-                    {track.img ? <img src={hdThumb(track.img)} alt="" className="w-full h-full object-cover" loading="lazy" /> : <MusicNotes size={18} className="text-warm-400 dark:text-warm-500" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-warm-800 dark:text-warm-200 truncate">{track.name}</p>
-                    <p className="text-xs text-warm-500 dark:text-warm-400 truncate">{track.uNm}</p>
-                  </div>
-                  <span className="text-xs text-warm-400 dark:text-warm-500">{track.nbP || ''}</span>
-                </div>
-              );
-            }) : (
-              <p className="text-sm text-warm-400 text-center py-8">no tracks found</p>
-            )}
-          </div>
-        </section>
       );
     }
 
@@ -616,6 +426,7 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
+      {pageLoading && <LoadingScreen message="tuning the frequencies..." />}
       {!showNowPlaying && (
         <>
           <Sidebar activeView={activeView} onNavigate={handleNavigate} dark={dark} onThemeToggle={() => setDark((d) => !d)} onLogin={() => setLoginOpen(true)} open={sidebarOpen} onToggle={() => setSidebarOpen((s) => !s)} />
@@ -652,7 +463,12 @@ export default function App() {
             </div>
           </div>
         )}
-        {renderContent()}
+        <div className="relative min-h-[200px]">
+          {renderContent()}
+          {searchLoading && (
+            <LoadingScreen overlay message="sifting through the stacks..." />
+          )}
+        </div>
       </main>
 
       <div ref={yt.containerRef} className="fixed opacity-0 pointer-events-none w-0 h-0" />
@@ -678,10 +494,9 @@ export default function App() {
         onRepeat={setRepeat}
         shuffle={shuffle}
         onShuffle={handleToggleShuffle}
-        liked={yt.currentTrack ? likedTracks.has(yt.currentTrack.videoId) : false}
-        onLike={() => handleToggleLike(yt.currentTrack)}
         saved={yt.currentTrack ? savedTracks.some((t) => t.videoId === yt.currentTrack.videoId) : false}
         onSave={() => handleSaveTrack(yt.currentTrack)}
+        onAddToQueue={handleAddToQueue}
         bridgeConnected={bridgeConnected}
         discordConnected={discordConnected}
       />

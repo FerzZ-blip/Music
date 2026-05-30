@@ -1,11 +1,8 @@
-import { House, Compass, ClockCounterClockwise, Heart, MicrophoneStage, VinylRecord } from '@phosphor-icons/react';
+import { House, ClockCounterClockwise, Heart } from '@phosphor-icons/react';
 
 const navItems = [
   { icon: House, label: 'home' },
-  { icon: Compass, label: 'dig' },
   { icon: ClockCounterClockwise, label: 'spins' },
-  { icon: MicrophoneStage, label: 'artists' },
-  { icon: VinylRecord, label: 'albums' },
   { icon: Heart, label: 'crate' },
 ];
 
